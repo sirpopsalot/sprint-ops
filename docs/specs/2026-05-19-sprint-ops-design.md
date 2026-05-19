@@ -123,17 +123,17 @@ tracker:
 
 team:
   members:
-    - name: "Avery"
-      email: "avery@example.com"
+    - name: "Kai"
+      email: "kai@example.com"
       role: "tech_lead"
-    - name: "Sidney"
-      email: "sidney@example.com"
+    - name: "Noor"
+      email: "noor@example.com"
       role: "product_lead"
-    - name: "Riley"
-      email: "riley@example.com"
+    - name: "Sasha"
+      email: "sasha@example.com"
       role: "qa"
   pm_scope_emails:
-    - "sidney@example.com"
+    - "noor@example.com"
     - "your-email@example.com"
 
 context_sources:

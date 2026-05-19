@@ -43,7 +43,7 @@ Decide the default by matching the user's email (provided in system context as `
 - Otherwise → default to **Personal** scope.
 - If `userEmail` is not present in context → default to **Personal** and confirm scope explicitly before proceeding.
 
-Matching should tolerate aliases when the configured value uses a wildcard (e.g., `sidney*@example.com`).
+Matching should tolerate aliases when the configured value uses a wildcard (e.g., `noor*@example.com`).
 
 ## How to decide and announce scope
 
