@@ -63,7 +63,7 @@ sprint-ops/
 | Component | Responsibility | Boundary |
 |---|---|---|
 | `plugin.json` | Plugin manifest. Static. | No logic. |
-| `setup-sprint.md` (command) | Interview user, write config to `.claude/sprint-ops.local.md`. | Writes config only. Does not read from tracker. Does not invoke the skill. |
+| `setup-sprint.md` (command) | Resolve the user's plugin config root (bootstrap if first-time plugin setup), read shared identity if present, interview user, write config to `<config-root>/plugins/sprint-ops.user-context.md`. | Writes config only. Does not read from tracker. Does not invoke the skill. |
 | `SKILL.md` | Route the user's request to the right workflow. Enforce shared behaviors (context check, scope confirmation, never-overwrite, draft-then-confirm). | Owns routing + cross-workflow invariants. Does not contain workflow logic. |
 | `references/team-context.md` | How to load team roster, ceremony cadence, tool stack from config. | Read-only. Describes what to read from config, not what to do with it. |
 | `references/ticket-quality.md` | Generic ticket rubric (Context / User Story / AC). Naming rules. How to read field mappings from config. | No tracker-specific field GIDs. Tracker-neutral language only. |
@@ -96,7 +96,20 @@ Asana is documented in setup as a known-working example, but not assumed.
 
 ## Configurability — the `/setup-sprint` pattern
 
-Matches BrightWay's existing pattern (`/setup-core`, `/setup-news`, etc.): a one-time interview command that writes config to `.claude/sprint-ops.local.md` using YAML frontmatter.
+Matches BrightWay's existing config-root pattern (verified against [BrightWayAI/core-ops](https://github.com/BrightWayAI/core-ops)'s `setup-core.md`).
+
+### Where config lives
+
+Three layers:
+
+1. **Pointer file** at `~/Documents/.claude-plugin-config-root` — a single line of text containing the absolute path of the user's chosen config root. Created once, the first time *any* nucleus plugin is set up.
+2. **Config root** — a user-chosen folder (e.g. `~/Documents/Claude/` or `~/Documents/PluginConfig/`). Holds shared files used across all nucleus plugins, plus a `plugins/` subdirectory with one file per plugin.
+3. **Inside the config root:**
+   - `identity.md` — shared identity (name, company, role, what your company does). Populated by `claude-cortex`'s `/setup-identity` if installed. Read by every nucleus plugin that needs identity info.
+   - `voice.md` — shared voice/writing style. Read by plugins that produce written output.
+   - `plugins/sprint-ops.user-context.md` — this plugin's config (schema below).
+
+Sprint-ops reads `identity.md` for the user's own name/email/company and `plugins/sprint-ops.user-context.md` for everything else. If `identity.md` is missing during setup, the `/setup-sprint` command offers to capture identity inline (without populating the shared file) so cortex isn't a hard dependency.
 
 ### Config schema
 
@@ -169,27 +182,44 @@ release_notes:
 
 ### Setup walkthrough
 
-`/setup-sprint` walks the user through ~10 questions in order:
+`/setup-sprint` runs in three phases. Phases 0 and 1 mirror `core-ops`'s `setup-core.md` exactly so the user experiences the same bootstrap dance across all nucleus plugins.
+
+**Phase 0 — Resolve plugin config root.** Read `~/Documents/.claude-plugin-config-root`.
+- If present → read line 1, that's the config root. Confirm read access. Skip to Phase 1.
+- If missing → first-time nucleus plugin setup. Prompt the user to choose a config root folder (offer `~/Documents/Claude/` as a recommended default, especially if they have `claude-cortex` installed). Create `<chosen-path>/plugins/` if it doesn't exist. Write the absolute path to `~/Documents/.claude-plugin-config-root`. Confirm in chat: "Saved. All marketplace plugin configs will live under `<chosen-path>` from now on."
+
+**Phase 1 — Read shared identity.** Read `<config-root>/identity.md`.
+- If present and populated → pre-fill name, email, company, role from it. Skip those questions in Phase 2, just confirm what was read.
+- If missing → offer: "Want to capture name/company/role once via `/setup-identity` (in `claude-cortex`) so all nucleus plugins can read it? Or capture identity inline here only?" Route to `/setup-identity` if user prefers, then resume. Otherwise capture inline (write to this plugin's config only, not to `identity.md`).
+
+**Phase 2 — The interview.** ~9 questions, one at a time. After each, summarize and confirm before moving on.
 
 1. What tracker do you use? (free text — informs walkthrough wording)
 2. What's your tracker's workspace identifier? (with help text per tracker)
 3. What's your backlog project identifier?
 4. How are active sprints named in your tracker? (regex or example)
-5. Who's on the team? (collect name / email / role for each)
-6. Which team members default to Product Management scope?
+5. Who's on the team? (collect name / email / role for each — your own entry pre-filled from identity)
+6. Which team members default to Product Management scope? (your own email auto-suggested)
 7. Where do meeting transcripts live? (M365 / Google Workspace / none)
 8. Which chat channel grounds your context? (or "none")
-9. What's your ticket-readiness field called, and what values does it have? (with FF example shown)
+9. What's your ticket-readiness field called, and what values does it have? (with concrete Asana example shown)
 10. Do you track member-submitted ideas? (yes → field names; no → omit)
 11. Where do release notes go? (Outline / Confluence / Notion / markdown file)
 
-Each step is a single question with a recommended default and an "Other" escape hatch. On completion, write `.claude/sprint-ops.local.md` and show the user a one-line summary of what was captured.
+Each step is a single question with a recommended default and an "Other" escape hatch. On completion, write `<config-root>/plugins/sprint-ops.user-context.md` with a markdown-formatted version of the captured YAML (matching `core-ops`'s output style: human-readable sections under headings, not raw YAML — easier for both Claude and the user to scan on re-read). Show the user a one-line summary of what was captured.
+
+**Re-running setup.** If `<config-root>/plugins/sprint-ops.user-context.md` already exists, the command opens with: "You've already configured sprint-ops. Update a specific section, or start over?" — letting the user re-answer just the questions they want without re-running the full interview.
 
 ### How references read config
 
-Every reference file begins with:
+Every reference file begins with the same resolution block:
 
-> Before doing anything in this workflow, read `.claude/sprint-ops.local.md`. If it doesn't exist, stop and tell the user to run `/setup-sprint` first.
+> Before doing anything in this workflow:
+> 1. Read `~/Documents/.claude-plugin-config-root` to find the config root.
+> 2. Read `<config-root>/plugins/sprint-ops.user-context.md` for plugin config.
+> 3. Read `<config-root>/identity.md` for shared identity (optional — skip if missing).
+>
+> If the pointer file or plugin config doesn't exist, stop and tell the user to run `/setup-sprint` first.
 
 References then refer to config values by their YAML path (e.g. `config.tracker.backlog_project_id`) when describing actions. This is documentation shorthand for Claude — there's no literal template engine. Claude reads the config file at the start of a workflow and substitutes the values mentally when it acts. No build step, no preprocessing.
 
@@ -221,8 +251,10 @@ References then refer to config values by their YAML path (e.g. `config.tracker.
 
 ## Error handling
 
-- **No config file present:** every reference checks for `.claude/sprint-ops.local.md` at the top and stops with a clear setup prompt if missing.
-- **Incomplete config:** references check the specific keys they need (e.g. `workflow-release-notes.md` checks `config.release_notes.destination`). If a needed key is missing, stop and tell the user which `/setup-sprint` question to re-answer.
+- **No pointer file present** (`~/Documents/.claude-plugin-config-root` missing): the workflow stops and tells the user to run `/setup-sprint` first — the command's Phase 0 bootstraps the pointer file.
+- **Pointer file exists but plugin config missing**: workflow stops and tells the user the pointer is fine, but they need to run `/setup-sprint` to capture sprint-ops's own settings.
+- **Pointer file points at a path that doesn't exist or isn't readable**: workflow stops and tells the user to either fix the path in `~/Documents/.claude-plugin-config-root` or re-run `/setup-sprint` (whose Phase 0 will rebuild the pointer).
+- **Incomplete plugin config:** references check the specific keys they need (e.g. `workflow-release-notes.md` checks `config.release_notes.destination`). If a needed key is missing, stop and tell the user which `/setup-sprint` question to re-answer (the re-run flow supports per-section updates).
 - **No tracker MCP installed:** Claude will not find a tool to call; the workflow stops at the "create tickets" step with a clear message ("I don't see a tracker MCP installed — install one for Asana / Jira / Linear / etc. and re-run").
 - **Context sources unavailable** (e.g. M365 not connected): `sprint-context-check.md` already handles this in the source plugin — keep that behavior, generalized to whatever source the user configured.
 - **Tracker write fails:** report the failure verbatim in chat. Do not retry silently. Do not partially write (if creating 5 tickets and ticket 3 fails, report and stop — the user decides whether to retry from ticket 3).
@@ -231,7 +263,11 @@ References then refer to config values by their YAML path (e.g. `config.tracker.
 
 Before declaring the plugin shippable:
 
-1. **Install locally and run `/setup-sprint`** with mock answers. Confirm `.claude/sprint-ops.local.md` is written correctly.
+1. **Install locally and run `/setup-sprint`** with mock answers. Test three scenarios:
+   - First-time setup (no pointer file): confirm the Phase 0 bootstrap creates `~/Documents/.claude-plugin-config-root` and the config root folder with a `plugins/` subdirectory
+   - Existing pointer + missing identity: confirm Phase 1 offers the `/setup-identity` route and the inline-capture fallback
+   - Existing pointer + populated identity: confirm Phase 1 pre-fills name/email/company from `<config-root>/identity.md` without re-asking
+   - In all three cases: confirm `<config-root>/plugins/sprint-ops.user-context.md` is written correctly
 2. **Run each of the six workflows** against a test Asana workspace with a real sprint project. Confirm:
    - Workflow reads config correctly
    - Tickets are drafted in chat with the right structure
@@ -252,16 +288,17 @@ Written for Zach's evaluation, not end users:
 - **What this is**: origin (genericized from a working ForFounder team plugin), what's been lifted into config, what's still opinionated
 - **How it fits nucleus**: sibling to `weekly-alignment` / `core-ops`; fills the engineering-team sprint-ops gap
 - **Install**: `/plugin marketplace add sirpopsalot/sprint-ops` for direct eval, or fork to `BrightWayAI/sprint-ops` for nucleus inclusion
-- **Setup**: run `/setup-sprint`, answer ~10 questions
+- **Setup**: run `/setup-sprint`. If `claude-cortex` is installed and `/setup-identity` has been run, the interview is ~9 questions; if not, ~12. First-time nucleus plugin users go through a Phase 0 config-root bootstrap (same flow as `core-ops`).
+- **Composes with `claude-cortex`**: shared identity and voice are picked up automatically when both are installed
 - **Six workflows section**: what each does, what it requires from config
 - **Opinionated choices flagged honestly**: e.g. "this plugin assumes two-week sprints; one-week and three-week sprints will mostly work but the 'end of week 1' progress check phrasing is hardcoded for two-week cadence"
 - **Known limitations**: no automated tracker schema discovery; Jira/Linear users may need to paste field IDs into config manually depending on their MCP
 
 ## Open questions (to resolve during implementation)
 
-1. **Config storage location.** BrightWay's `plugin-settings` skill documents `.claude/<plugin-name>.local.md` for per-project config. For a per-user plugin like this, `~/.claude/sprint-ops.local.md` may be more appropriate. Confirm during implementation by checking how `core-ops` and `news-curator` store their settings.
-2. **Default tracker example in README.** Use Asana (matches the source plugin and is well-tested) vs. Linear (cleaner public API, possibly more common in BrightWay's client base). Defaulting to Asana for now; revisit if Zach has a preference.
-3. **Whether to ship a sample config.** A `examples/sprint-ops.local.md` showing a filled-in config could speed up evaluation. Lean yes; flag if it creates maintenance burden.
+1. **Default tracker example in README.** Use Asana (matches the source plugin and is well-tested) vs. Linear (cleaner public API, possibly more common in BrightWay's client base). Defaulting to Asana for now; revisit if Zach has a preference.
+2. **Whether to ship a sample config.** A `examples/sprint-ops.user-context.md` showing a filled-in config could speed up evaluation. Lean yes; flag if it creates maintenance burden.
+3. **Config file format on disk: human-readable markdown vs. raw YAML.** `core-ops` writes its config as markdown with section headings rather than raw YAML. The schema in this spec is shown as YAML for clarity, but the on-disk format should match `core-ops`'s style: headings like `## Tracker`, `## Team`, etc., with key-value lines under each. Confirm during implementation by re-reading `core-ops`'s output.
 
 ## Out-of-scope follow-ups
 
