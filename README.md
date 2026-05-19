@@ -43,8 +43,10 @@ These are the patterns that make the skill trustworthy in practice — preserved
 
 ```
 /plugin marketplace add sirpopsalot/sprint-ops
-/plugin install sprint-ops
+/plugin install sprint-ops@sprint-ops
 ```
+
+The repo exposes itself as a single-plugin marketplace named `sprint-ops`. The `@sprint-ops` suffix tells Claude Code which marketplace to pull from — the part after `@` is the marketplace name from this repo's `.claude-plugin/marketplace.json`.
 
 ### Via a marketplace (recommended for ongoing use)
 

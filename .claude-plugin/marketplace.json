@@ -1,0 +1,24 @@
+{
+  "name": "sprint-ops",
+  "owner": {
+    "name": "sirpopsalot"
+  },
+  "metadata": {
+    "description": "Direct-install marketplace for the sprint-ops plugin. A tracker-agnostic Program Lead workflow for any team running sprints.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "sprint-ops",
+      "source": ".",
+      "description": "Program Lead workflow for any team running sprints. Turns raw inputs (feedback, bug reports, meeting transcripts) into well-formed tickets, preps the sprint for kickoff and poker estimation, runs a mid-sprint progress check, seeds the retrospective, and compiles production release notes. Tracker-agnostic; configurable per user via /setup-sprint.",
+      "version": "0.1.0",
+      "author": {
+        "name": "sirpopsalot"
+      },
+      "category": "productivity",
+      "keywords": ["sprint", "scrum", "tickets", "backlog", "program-lead", "tracker-agnostic", "asana", "jira", "linear"],
+      "strict": false
+    }
+  ]
+}
