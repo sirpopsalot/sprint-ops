@@ -41,12 +41,25 @@ These are the patterns that make the skill trustworthy in practice — preserved
 
 ### Direct (for evaluation)
 
+Run these three commands one at a time (each must complete before the next):
+
 ```
-/plugin marketplace add sirpopsalot/sprint-ops
+/plugin marketplace add https://github.com/sirpopsalot/sprint-ops.git
+```
+
+```
 /plugin install sprint-ops@sprint-ops
 ```
 
-The repo exposes itself as a single-plugin marketplace named `sprint-ops`. The `@sprint-ops` suffix tells Claude Code which marketplace to pull from — the part after `@` is the marketplace name from this repo's `.claude-plugin/marketplace.json`.
+```
+/reload-plugins
+```
+
+Notes:
+
+- **Use the full `https://...git` URL**, not the `owner/repo` shorthand. The shorthand defaults to SSH on many CLI configurations; the HTTPS URL works without GitHub SSH keys (this is a public repo).
+- The repo exposes itself as a single-plugin marketplace named `sprint-ops`. The `@sprint-ops` suffix on the install command tells Claude Code which marketplace to install from.
+- `/reload-plugins` activates the install without restarting the CLI.
 
 ### Via a marketplace (recommended for ongoing use)
 
@@ -55,11 +68,30 @@ Add this entry to your marketplace's `marketplace.json`:
 ```json
 {
   "name": "sprint-ops",
-  "source": { "source": "github", "repo": "<your-org>/sprint-ops" },
+  "source": {
+    "source": "git",
+    "url": "https://github.com/<your-org>/sprint-ops.git"
+  },
   "description": "Program Lead workflow for any team running sprints. Tracker-agnostic.",
   "author": { "name": "<your-org>" }
 }
 ```
+
+(Or use `"source": { "source": "github", "repo": "<your-org>/sprint-ops" }` if your machines have GitHub SSH keys set up — `github` source type defaults to SSH cloning, which fails without keys. The `git` + `url` form is portable.)
+
+### Troubleshooting install
+
+**`Permission denied (publickey)` from `git@github.com:`** — the CLI is trying to clone over SSH but your machine doesn't have GitHub SSH keys. Two fixes:
+
+1. Use the full `https://github.com/sirpopsalot/sprint-ops.git` URL when adding the marketplace (not the shorthand).
+2. Or apply a one-time global git config rewrite so any SSH GitHub URL transparently uses HTTPS:
+   ```bash
+   git config --global url."https://github.com/".insteadOf "git@github.com:"
+   ```
+
+**`This plugin uses a source type your Claude Code version does not support`** — your CLI doesn't recognize the source type in `marketplace.json`. This plugin uses `"source": { "source": "git", "url": "..." }` which should be widely supported, but if you see this, update Claude Code to the latest version.
+
+**Multiple `/plugin` commands run together as one URL** — paste each command on its own line and submit each separately. Pasting all three at once can result in the CLI interpreting everything as a single argument.
 
 ## First-time setup
 
