@@ -11,8 +11,8 @@
     {
       "name": "sprint-ops",
       "source": {
-        "source": "github",
-        "repo": "sirpopsalot/sprint-ops"
+        "source": "git",
+        "url": "https://github.com/sirpopsalot/sprint-ops.git"
       },
       "description": "Program Lead workflow for any team running sprints. Turns raw inputs (feedback, bug reports, meeting transcripts) into well-formed tickets, preps the sprint for kickoff and poker estimation, runs a mid-sprint progress check, seeds the retrospective, and compiles production release notes. Tracker-agnostic; configurable per user via /setup-sprint.",
       "version": "0.1.0",
