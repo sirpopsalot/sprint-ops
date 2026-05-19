@@ -77,7 +77,7 @@ Only ask the questions whose answers weren't pre-filled from `<config-root>/iden
   - **No tracker yet**: skip this section; the skill will tell you to set one up before running workflows.
 - What's the project identifier for your backlog (where bugs and features get triaged before being scheduled)? Paste the ID, slug, or URL — whatever the tracker uses.
 - How are active sprints named in your tracker? Give an example name (e.g., "Sprint 15 (April 20 – May 1)") or a regex if your naming is consistent. The skill uses this to find the current sprint.
-- What's your ticket ID prefix? (e.g., "FF" if your tickets are `FF-1234`, "ENG" if they're `ENG-1234`, or "none" if your tracker auto-IDs without a custom prefix.)
+- What's your ticket ID prefix? (e.g., "BW" if your tickets are `BW-1234`, "ENG" if they're `ENG-1234`, or "none" if your tracker auto-IDs without a custom prefix.)
 
 ### Section 3 — Team
 
